@@ -1,0 +1,146 @@
+#!/usr/bin/env bash
+#
+# Comandos de la practica de Ollama.
+#
+#   ./run start     levanta el backend (y el frontend, desde la fase 2)
+#   ./run stop      los detiene
+#   ./run status    que esta corriendo
+#   ./run logs      ultimas lineas
+#   ./run salud     pregunta al backend si Ollama responde
+#   ./run modelo    que modelos tiene Ollama instalados
+#
+# Los puertos son 8080 el backend y 3000 el frontend, los mismos de la parte 1:
+# ya estan abiertos en tu security group y no hay que tocar la consola de AWS.
+#
+# Ollama escucha en el 11434 y ese NO se abre: solo lo usa este backend, desde
+# la misma maquina.
+
+set -uo pipefail
+
+AQUI="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+RUN_DIR="$AQUI/.run"
+mkdir -p "$RUN_DIR"
+
+VERDE="\033[32m"; AMARILLO="\033[33m"; ROJO="\033[31m"; RESET="\033[0m"
+ok()    { echo -e "  ${VERDE}OK${RESET}    $1"; }
+aviso() { echo -e "  ${AMARILLO}AVISO${RESET} $1"; }
+mal()   { echo -e "  ${ROJO}FALLA${RESET} $1"; }
+
+PY="${PY:-$AQUI/.venv/bin/python}"
+OLLAMA="${OLLAMA_URL:-http://localhost:11434}"
+
+vive() { [[ -f "$RUN_DIR/$1.pid" ]] && kill -0 "$(cat "$RUN_DIR/$1.pid")" 2>/dev/null; }
+
+arrancar() {
+  local s="$1"; shift
+  vive "$s" && { aviso "$s ya corria (pid $(cat "$RUN_DIR/$s.pid"))"; return 0; }
+  nohup "$@" > "$RUN_DIR/$s.log" 2>&1 &
+  echo $! > "$RUN_DIR/$s.pid"
+  sleep 2
+  vive "$s" && ok "$s arrancado (pid $(cat "$RUN_DIR/$s.pid"))" \
+            || { mal "$s no arranco. Mira:  ./run logs $s"; return 1; }
+}
+
+detener() {
+  local s="$1" p="$2" algo=0
+  if [[ -f "$RUN_DIR/$s.pid" ]]; then
+    kill -TERM "$(cat "$RUN_DIR/$s.pid")" 2>/dev/null && algo=1
+    sleep 1; kill -KILL "$(cat "$RUN_DIR/$s.pid")" 2>/dev/null
+    rm -f "$RUN_DIR/$s.pid"
+  fi
+  if command -v lsof >/dev/null 2>&1; then
+    local h; h="$(lsof -ti:"$p" 2>/dev/null || true)"
+    [[ -n "$h" ]] && { echo "$h" | xargs kill -KILL 2>/dev/null; algo=1; }
+  fi
+  (( algo )) && ok "$s detenido" || echo "  $s no estaba corriendo"
+}
+
+case "${1:-}" in
+  start)
+    if [[ ! -x "$PY" ]]; then
+      # Distinguir la laptop de la instancia importa: mandar a un alumno a
+      # correr bootstrap.sh en su Mac es mandarlo a una pared. La instancia es
+      # la unica Linux del curso.
+      if [[ "$(uname -s)" != "Linux" ]]; then
+        mal "esto se corre en la INSTANCIA. Aqui todavia no."
+        echo
+        echo "        Por ahora tu maquina edita y hace git; la instancia ejecuta."
+        echo
+        echo "        Aqui:           git add -A && git commit -m \"...\" && git push"
+        echo "        En la instancia: git pull && ./run restart"
+        echo
+        echo "        Al final del modulo vas a tener que hacerlo correr aqui"
+        echo "        tambien. Ese es un ejercicio, no un paso del setup: ya"
+        echo "        tendras todo lo que hace falta para averiguar como."
+      else
+        mal "no encuentro el entorno en $PY"
+        echo "        Corre:  bash setup/bootstrap.sh"
+      fi
+      exit 1
+    fi
+    arrancar api "$PY" "$AQUI/backend/app.py"
+
+    if [[ -d "$AQUI/frontend/node_modules" ]]; then
+      # nvm no es un programa, es una funcion de shell que se carga desde
+      # ~/.bashrc. Una terminal que no lo haya leido no tiene npm en el PATH, y
+      # el sintoma seria "web no arranco" sin decir por que. Se carga aqui.
+      arrancar web bash -c "
+        export NVM_DIR=\"\$HOME/.nvm\"
+        [ -s \"\$NVM_DIR/nvm.sh\" ] && . \"\$NVM_DIR/nvm.sh\"
+        cd '$AQUI/frontend' && exec npm run dev"
+    elif [[ -f "$AQUI/frontend/package.json" ]]; then
+      aviso "frontend/ esta ahi pero sin dependencias. Corre:  bash setup/bootstrap.sh"
+    else
+      echo "  (el frontend llega en la fase 2)"
+    fi
+    echo
+    ip="$(curl -s --max-time 3 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || true)"
+    [[ -n "$ip" ]] && echo "  Backend: http://$ip:8080/api/health" && \
+                      echo "  Chat:    http://$ip:3000"
+    ;;
+
+  stop)    detener web 3000; detener api 8080 ;;
+  restart) "$0" stop; echo; "$0" start ;;
+
+  status)
+    echo
+    for s in api web; do
+      vive "$s" && ok "$s corriendo (pid $(cat "$RUN_DIR/$s.pid"))" || echo "  --    $s detenido"
+    done
+    echo
+    curl -s -m 3 -o /dev/null -w "  backend :8080 -> %{http_code}\n" localhost:8080/api/health \
+      || echo "  backend :8080 -> sin respuesta"
+    curl -s -m 3 -o /dev/null -w "  Ollama  :11434 -> %{http_code}\n" "$OLLAMA/api/tags" \
+      || echo "  Ollama  :11434 -> sin respuesta"
+    echo
+    ;;
+
+  logs)
+    s="${2:-}"
+    if [[ -n "$s" ]]; then exec tail -f "$RUN_DIR/$s.log"; fi
+    for s in api web; do
+      echo "===== $s ====="
+      [[ -f "$RUN_DIR/$s.log" ]] && tail -n 15 "$RUN_DIR/$s.log" || echo "(sin registro)"
+      echo
+    done
+    ;;
+
+  salud)  curl -s localhost:8080/api/health; echo ;;
+
+  modelo)
+    curl -s "$OLLAMA/api/tags" 2>/dev/null | "$PY" -c "
+import sys, json
+try:
+    ms = json.load(sys.stdin).get('models', [])
+except Exception:
+    print('  Ollama no respondio. En la instancia:  ollama serve'); raise SystemExit(1)
+if not ms:
+    print('  Ollama vive pero no tiene modelos.  ollama pull qwen2.5:1.5b')
+for m in ms:
+    print(f\"  {m['name']:24s} {m['size']/1e9:5.1f} GB\")
+" ;;
+
+  *)
+    sed -n '3,20p' "$AQUI/run" | sed 's/^# \{0,1\}//'
+    ;;
+esac

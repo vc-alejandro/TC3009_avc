@@ -1,0 +1,8 @@
+# Fase 1: un backend que habla con Ollama. Nada mas.
+#
+# Versiones fijas por la misma razon que en el curso: que la instancia y tu
+# maquina corran EXACTAMENTE lo mismo, y que un fallo sea del codigo y no de
+# una version que cambio sola.
+Flask==3.0.3
+Flask-Cors==4.0.1
+requests==2.32.3

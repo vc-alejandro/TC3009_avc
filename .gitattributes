@@ -1,0 +1,23 @@
+# Finales de linea: LF en todas las plataformas, sin excepcion.
+#
+# El instalador de Git para Windows trae core.autocrlf=true por defecto, asi
+# que al clonar convierte los archivos a CRLF. Para un .md da igual; para un
+# script de shell es fatal:
+#
+#     $ ./setup/run start
+#     env: bash\r: No such file or directory
+#
+# El \r se pega al nombre del interprete en la linea del shebang y el sistema
+# busca un programa llamado "bash\r", que no existe. El mensaje no menciona
+# los finales de linea por ningun lado, y se pierden horas.
+#
+# 'eol=lf' le gana a core.autocrlf, asi que esto funciona sin que el alumno
+# tenga que configurar nada en su maquina.
+* text=auto eol=lf
+
+# Binarios: que git no los toque.
+*.joblib binary
+*.png    binary
+*.jpg    binary
+*.ico    binary
+*.zip    binary

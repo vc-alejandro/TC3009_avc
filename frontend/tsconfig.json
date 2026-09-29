@@ -1,0 +1,42 @@
+// Como se compila TypeScript. Un solo archivo, y cada linea hace algo.
+//
+// (Si, tsconfig.json admite comentarios. Es la unica excepcion que veras.)
+{
+  "compilerOptions": {
+    // A que version de JavaScript se traduce, y que cosas del navegador
+    // existen. ES2022 trae async/await y fetch sin adornos.
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+
+    // "bundler": resuelve los imports como lo hace Vite, no como Node. Sin
+    // esto tendrias que escribir "./api.js" para importar "./api.ts".
+    "moduleResolution": "bundler",
+
+    // El JSX moderno: no hace falta importar React en cada archivo que lo use.
+    "jsx": "react-jsx",
+
+    // LA BANDERA QUE IMPORTA.
+    //
+    // Sin strict, TypeScript te deja escribir casi el mismo JavaScript de
+    // siempre y no sirve de nada. Con strict, un valor que puede ser null hay
+    // que comprobarlo antes de usarlo -- y ese es justo el error que de otro
+    // modo aparece en produccion.
+    "strict": true,
+
+    // noUnusedLocals y noUnusedParameters NO estan, a proposito. Son utiles en
+    // un proyecto terminado y un estorbo mientras escribes: declaras una
+    // variable, aun no la usas, y el proyecto entero deja de compilar. Aqui
+    // hay huecos por rellenar; que la pantalla se ponga roja por algo que
+    // todavia no has escrito no ayuda a nadie.
+
+    // tsc solo revisa; quien genera el JavaScript es Vite.
+    "noEmit": true,
+    "isolatedModules": true,
+
+    // No revisar el interior de las librerias. Los tipos de React son enormes
+    // y sus errores no son tuyos.
+    "skipLibCheck": true
+  },
+  "include": ["src"]
+}

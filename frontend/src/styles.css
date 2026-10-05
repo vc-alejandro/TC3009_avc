@@ -1,0 +1,115 @@
+:root {
+  --plano: #f9f9f7;
+  --superficie: #fcfcfb;
+  --tinta: #0b0b0b;
+  --tinta-2: #52514e;
+  --tinta-apagada: #898781;
+  --linea: #e1e0d9;
+  --eje: #c3c2b7;
+  --serie: #2a78d6;
+  color-scheme: light;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--plano);
+  color: var(--tinta);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.pagina {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px 20px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+header h1 { font-size: 22px; margin: 0 0 2px; letter-spacing: -0.01em; }
+header p { margin: 0 0 20px; color: var(--tinta-apagada); font-size: 13px; }
+
+.conversacion {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-bottom: 20px;
+}
+
+.mensaje { display: flex; flex-direction: column; gap: 3px; }
+.mensaje.user { align-items: flex-end; }
+
+.quien {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--tinta-apagada);
+}
+
+.texto {
+  background: var(--superficie);
+  border: 1px solid var(--linea);
+  border-radius: 12px;
+  padding: 10px 14px;
+  max-width: 85%;
+  white-space: pre-wrap;
+}
+
+.mensaje.user .texto {
+  background: var(--serie);
+  border-color: var(--serie);
+  color: white;
+}
+
+.pensando { color: var(--tinta-apagada); font-style: italic; }
+
+.vacio {
+  text-align: center;
+  color: var(--tinta-apagada);
+  padding: 40px 0;
+  font-size: 14px;
+}
+
+.aviso-error {
+  border-left: 3px solid #d03b3b;
+  background: rgba(208, 59, 59, 0.05);
+  border-radius: 0 8px 8px 0;
+  padding: 10px 14px;
+}
+.aviso-error p { margin: 4px 0 0; font-size: 13px; color: var(--tinta-2); }
+
+.entrada {
+  display: flex;
+  gap: 8px;
+  position: sticky;
+  bottom: 0;
+  background: var(--plano);
+  padding: 12px 0;
+}
+
+.entrada input {
+  flex: 1;
+  font: inherit;
+  padding: 10px 14px;
+  border: 1px solid var(--eje);
+  border-radius: 10px;
+  background: var(--superficie);
+  color: var(--tinta);
+}
+
+.entrada button {
+  font: inherit;
+  font-weight: 600;
+  padding: 10px 22px;
+  border: none;
+  border-radius: 10px;
+  background: var(--serie);
+  color: white;
+  cursor: pointer;
+}
+.entrada button:disabled { background: var(--eje); cursor: default; }
